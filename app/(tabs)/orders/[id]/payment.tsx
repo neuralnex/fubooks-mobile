@@ -11,7 +11,6 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { apiService } from '../../../../services/api';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';

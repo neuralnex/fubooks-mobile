@@ -115,7 +115,9 @@ export default function BooksScreen() {
         data={filteredBooks}
         renderItem={({ item }) => <BookCard book={item} />}
         keyExtractor={(item) => item.id}
+        numColumns={3}
         contentContainerStyle={styles.list}
+        columnWrapperStyle={styles.row}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -176,7 +178,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   list: {
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingBottom: 20,
+  },
+  row: {
+    justifyContent: 'space-between',
   },
   empty: {
     padding: 40,

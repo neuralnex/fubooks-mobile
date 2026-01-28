@@ -66,7 +66,7 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
       }
       Alert.alert('Success', 'Book added to cart');
       setQuantity(1);
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to add to cart');
     } finally {
       setAddingToCart(false);
@@ -91,17 +91,19 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
       onPress={handleCardPress}
       activeOpacity={0.9}
     >
-      {getCoverSrc(book.coverImage) ? (
-        <ExpoImage
-          source={{ uri: getCoverSrc(book.coverImage) }}
-          style={styles.image}
-          contentFit="cover"
-        />
-      ) : (
-        <View style={[styles.image, styles.placeholder]}>
-          <Text style={styles.placeholderText}>No Image</Text>
-        </View>
-      )}
+      <View style={styles.imageWrapper}>
+        {getCoverSrc(book.coverImage) ? (
+          <ExpoImage
+            source={{ uri: getCoverSrc(book.coverImage) }}
+            style={styles.image}
+            contentFit="contain"
+          />
+        ) : (
+          <View style={styles.placeholder}>
+            <Text style={styles.placeholderText}>No Image</Text>
+          </View>
+        )}
+      </View>
       <View style={styles.content}>
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
           {book.title}
@@ -110,6 +112,19 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
           by {book.author}
         </Text>
         <Text style={[styles.price, { color: colors.primary }]}>₦{Number(book.price).toFixed(2)}</Text>
+
+        <View style={styles.deliveryBadges}>
+          <View style={[styles.deliveryBadge, { backgroundColor: colors.success + '22' }]}>
+            <Text style={[styles.deliveryBadgeText, { color: colors.success }]}>
+              SUG pickup
+            </Text>
+          </View>
+          <View style={[styles.deliveryBadge, { backgroundColor: colors.accent + '22' }]}>
+            <Text style={[styles.deliveryBadgeText, { color: colors.accent }]}>
+              Eziobodo / Umuchima delivery
+            </Text>
+          </View>
+        </View>
         
         {book.stock > 0 && !isAdmin && (
           <View style={styles.cartSection}>
@@ -188,11 +203,20 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 6,
   },
+  imageWrapper: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   image: {
     width: '100%',
-    height: 150,
+    height: '100%',
   },
   placeholder: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
@@ -220,6 +244,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
+  },
+  deliveryBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  deliveryBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  deliveryBadgeText: {
+    fontSize: 10,
+    fontWeight: '500',
   },
   cartSection: {
     marginBottom: 8,

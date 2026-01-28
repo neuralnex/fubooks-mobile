@@ -6,9 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "fubooks",
-    "associatedDomains": [
-      "applinks:bookmate-n9wh.onrender.com"
-    ],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

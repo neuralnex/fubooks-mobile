@@ -32,6 +32,7 @@ export interface Book {
 
 export type PaymentStatus = 'paid' | 'pending' | 'failed';
 export type OrderStatus = 'processing' | 'purchased' | 'delivering' | 'delivered';
+export type DeliveryMethod = 'pickup' | 'delivery';
 
 export interface OrderItem {
   id: string;
@@ -46,9 +47,11 @@ export interface Order {
   studentId: string;
   student?: User;
   totalAmount: number;
+  deliveryFee?: number;
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
   deliveryAddress: string;
+  deliveryMethod?: DeliveryMethod;
   paymentReference?: string;
   opayOrderNo?: string;
   orderItems: OrderItem[];

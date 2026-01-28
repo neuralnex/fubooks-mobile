@@ -8,36 +8,36 @@
 import { Platform } from 'react-native';
 
 const tintColorLight = '#FF9900'; // Amazon Orange
-const tintColorDark = '#FF9900'; // Amazon Orange (same for dark mode)
+const tintColorDark = '#FFB84D'; // Slightly warmer orange in dark mode
 
 export const Colors = {
   light: {
     text: '#131921', // Amazon dark text
-    background: '#FFFFFF', // White background
+    background: '#EAEDED', // Amazon light grey page background
     tint: tintColorLight,
     icon: '#666666',
     tabIconDefault: '#666666',
     tabIconSelected: tintColorLight,
     primary: '#FF9900', // Amazon Orange
     secondary: '#232F3E', // Amazon Dark Blue
-    accent: '#146EB4', // Amazon Blue
-    success: '#007600', // Amazon Green
+    accent: '#0073E6', // Brighter Amazon Blue
+    success: '#008A00', // Amazon Green
     error: '#B12704', // Amazon Red
     border: '#DDDDDD',
     cardBackground: '#FFFFFF',
-    inputBackground: '#F8F9FA',
+    inputBackground: '#F5F7FA',
   },
   dark: {
     text: '#FFFFFF',
-    background: '#131921', // Amazon dark background
+    background: '#0F1111', // Amazon deep dark background
     tint: tintColorDark,
     icon: '#CCCCCC',
     tabIconDefault: '#CCCCCC',
     tabIconSelected: tintColorDark,
-    primary: '#FF9900', // Amazon Orange
+    primary: '#FFB84D', // Softer orange for dark mode
     secondary: '#232F3E', // Amazon Dark Blue
-    accent: '#146EB4', // Amazon Blue
-    success: '#00A000',
+    accent: '#3EA6FF', // Vibrant blue accent
+    success: '#00C853',
     error: '#FF6B6B',
     border: '#3A4551',
     cardBackground: '#1A1F2E',

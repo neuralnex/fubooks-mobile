@@ -17,13 +17,22 @@ import { cartStorage } from '../../utils/storage';
 import type { CartItem } from '../../types';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+const DELIVERY_FEE_EZIOBODO = 500;
+
+type FulfilmentMethod = 'pickup' | 'delivery';
 
 export default function CartScreen() {
   const { isAuthenticated, isAdmin } = useAuth();
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [fulfilmentMethod, setFulfilmentMethod] = useState<FulfilmentMethod>('pickup');
   const [loading, setLoading] = useState(false);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   useEffect(() => {
     loadCart();
@@ -52,10 +61,13 @@ export default function CartScreen() {
     await cartStorage.saveCart(updatedCart);
   };
 
-  const totalAmount = cart.reduce(
+  const itemsTotal = cart.reduce(
     (sum, item) => sum + Number(item.book.price) * item.quantity,
     0
   );
+
+  const deliveryFee = fulfilmentMethod === 'delivery' ? DELIVERY_FEE_EZIOBODO : 0;
+  const grandTotal = itemsTotal + deliveryFee;
 
   const handleCheckout = async () => {
     if (!isAuthenticated) {
@@ -71,8 +83,14 @@ export default function CartScreen() {
       return;
     }
 
-    if (!deliveryAddress || deliveryAddress.length < 10) {
-      Alert.alert('Error', 'Please enter a valid delivery address (at least 10 characters)');
+    if (
+      fulfilmentMethod === 'delivery' &&
+      (!deliveryAddress || deliveryAddress.length < 10)
+    ) {
+      Alert.alert(
+        'Error',
+        'Please enter a valid Eziobodo or Umuchima delivery address (at least 10 characters)'
+      );
       return;
     }
 
@@ -83,7 +101,11 @@ export default function CartScreen() {
           bookId: item.book.id,
           quantity: item.quantity,
         })),
-        deliveryAddress,
+        deliveryAddress:
+          fulfilmentMethod === 'pickup'
+            ? 'SUG Building - Pickup Station'
+            : deliveryAddress,
+        deliveryMethod: fulfilmentMethod,
       });
 
       await cartStorage.clearCart();
@@ -105,7 +127,7 @@ export default function CartScreen() {
 
   if (isAdmin) {
     return (
-      <ThemedView style={styles.container}>
+      <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.empty}>
           <Text style={styles.emptyText}>
             Admin accounts are for operations only and cannot place orders.
@@ -123,7 +145,7 @@ export default function CartScreen() {
 
   if (cart.length === 0) {
     return (
-      <ThemedView style={styles.container}>
+      <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.empty}>
           <Text style={styles.emptyText}>Your cart is empty</Text>
           <TouchableOpacity
@@ -138,7 +160,7 @@ export default function CartScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
       <ThemedText type="title" style={styles.title}>
         Shopping Cart
       </ThemedText>
@@ -146,7 +168,12 @@ export default function CartScreen() {
       <FlatList
         data={cart}
         renderItem={({ item }) => (
-          <View style={styles.cartItem}>
+          <View
+            style={[
+              styles.cartItem,
+              { backgroundColor: colors.cardBackground, shadowColor: '#000' },
+            ]}
+          >
             {getCoverSrc(item.book.coverImage) && (
               <ExpoImage
                 source={{ uri: getCoverSrc(item.book.coverImage) }}
@@ -155,9 +182,13 @@ export default function CartScreen() {
               />
             )}
             <View style={styles.itemDetails}>
-              <Text style={styles.itemTitle}>{item.book.title}</Text>
-              <Text style={styles.itemAuthor}>by {item.book.author}</Text>
-              <Text style={styles.itemPrice}>₦{Number(item.book.price).toFixed(2)}</Text>
+              <Text style={[styles.itemTitle, { color: colors.text }]}>{item.book.title}</Text>
+              <Text style={[styles.itemAuthor, { color: colors.icon }]}>
+                by {item.book.author}
+              </Text>
+              <Text style={[styles.itemPrice, { color: colors.accent }]}>
+                ₦{Number(item.book.price).toFixed(2)}
+              </Text>
 
               <View style={styles.quantityControls}>
                 <TouchableOpacity
@@ -176,7 +207,7 @@ export default function CartScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.itemTotal}>
+              <Text style={[styles.itemTotal, { color: colors.text }]}>
                 Total: ₦{(Number(item.book.price) * item.quantity).toFixed(2)}
               </Text>
             </View>
@@ -184,7 +215,9 @@ export default function CartScreen() {
               style={styles.removeButton}
               onPress={() => removeItem(item.book.id)}
             >
-              <Text style={styles.removeButtonText}>Remove</Text>
+              <Text style={[styles.removeButtonText, { color: colors.error }]}>
+                Remove
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -192,31 +225,150 @@ export default function CartScreen() {
         contentContainerStyle={styles.list}
       />
 
-      <View style={styles.checkoutSection}>
-        <TextInput
-          style={styles.addressInput}
-          placeholder="Delivery Address (min 10 characters)"
-          placeholderTextColor="#999"
-          value={deliveryAddress}
-          onChangeText={setDeliveryAddress}
-          multiline
-        />
+      <View
+        style={[
+          styles.checkoutSection,
+          { backgroundColor: colors.cardBackground, shadowColor: '#000' },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Delivery Options
+        </Text>
+
+        <View style={styles.fulfilmentRow}>
+          <TouchableOpacity
+            style={[
+              styles.fulfilmentOption,
+              {
+                borderColor:
+                  fulfilmentMethod === 'pickup' ? colors.primary : colors.border,
+              },
+            ]}
+            onPress={() => setFulfilmentMethod('pickup')}
+          >
+            <View
+              style={[
+                styles.radioOuter,
+                {
+                  borderColor:
+                    fulfilmentMethod === 'pickup' ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              {fulfilmentMethod === 'pickup' && (
+                <View
+                  style={[styles.radioInner, { backgroundColor: colors.primary }]}
+                />
+              )}
+            </View>
+            <View style={styles.fulfilmentTextWrapper}>
+              <Text style={[styles.fulfilmentTitle, { color: colors.text }]}>
+                Pick up at SUG Building
+              </Text>
+              <Text style={[styles.fulfilmentSubtitle, { color: colors.icon }]}>
+                Free – collect your order at the SUG building pickup station
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.fulfilmentOption,
+              {
+                borderColor:
+                  fulfilmentMethod === 'delivery' ? colors.primary : colors.border,
+              },
+            ]}
+            onPress={() => setFulfilmentMethod('delivery')}
+          >
+            <View
+              style={[
+                styles.radioOuter,
+                {
+                  borderColor:
+                    fulfilmentMethod === 'delivery' ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              {fulfilmentMethod === 'delivery' && (
+                <View
+                  style={[styles.radioInner, { backgroundColor: colors.primary }]}
+                />
+              )}
+            </View>
+            <View style={styles.fulfilmentTextWrapper}>
+              <Text style={[styles.fulfilmentTitle, { color: colors.text }]}>
+                Deliver to Eziobodo / Umuchima
+              </Text>
+              <Text style={[styles.fulfilmentSubtitle, { color: colors.icon }]}>
+                ₦{DELIVERY_FEE_EZIOBODO.toFixed(0)} delivery fee – enter your full
+                Eziobodo or Umuchima address below
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {fulfilmentMethod === 'delivery' && (
+          <TextInput
+            style={[
+              styles.addressInput,
+              { backgroundColor: colors.inputBackground, color: colors.text },
+            ]}
+            placeholder="Eziobodo or Umuchima address (e.g. Lodge, room, landmarks)"
+            placeholderTextColor={colors.icon}
+            value={deliveryAddress}
+            onChangeText={setDeliveryAddress}
+            multiline
+          />
+        )}
 
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalAmount}>₦{totalAmount.toFixed(2)}</Text>
+          <Text style={[styles.totalLabel, { color: colors.text }]}>
+            Items total
+          </Text>
+          <Text style={[styles.totalAmount, { color: colors.text }]}>
+            ₦{itemsTotal.toFixed(2)}
+          </Text>
+        </View>
+
+        <View style={styles.totalRow}>
+          <Text style={[styles.totalLabel, { color: colors.text }]}>Delivery</Text>
+          <Text style={[styles.totalAmount, { color: colors.text }]}>
+            {fulfilmentMethod === 'pickup'
+              ? 'Free (Pickup)'
+              : `₦${deliveryFee.toFixed(2)}`}
+          </Text>
+        </View>
+
+        <View style={[styles.totalRow, styles.orderTotalRow]}>
+          <Text style={[styles.totalLabel, styles.orderTotalLabel, { color: colors.text }]}>
+            Order total
+          </Text>
+          <Text
+            style={[
+              styles.totalAmount,
+              styles.orderTotalAmount,
+              { color: colors.primary },
+            ]}
+          >
+            ₦{grandTotal.toFixed(2)}
+          </Text>
         </View>
 
         {!isAuthenticated ? (
           <TouchableOpacity
-            style={styles.checkoutButton}
+            style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
             onPress={() => router.push('/(auth)/login')}
           >
             <Text style={styles.checkoutButtonText}>Sign In to Checkout</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[styles.checkoutButton, loading && styles.checkoutButtonDisabled]}
+            style={[
+              styles.checkoutButton,
+              { backgroundColor: colors.primary },
+              loading && styles.checkoutButtonDisabled,
+            ]}
             onPress={handleCheckout}
             disabled={loading}
           >
@@ -248,7 +400,6 @@ const styles = StyleSheet.create({
   },
   cartItem: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
@@ -274,13 +425,11 @@ const styles = StyleSheet.create({
   },
   itemAuthor: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 4,
   },
   itemPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#007AFF',
     marginBottom: 8,
   },
   quantityControls: {
@@ -311,7 +460,6 @@ const styles = StyleSheet.create({
   itemTotal: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
   },
   removeButton: {
     justifyContent: 'flex-start',
@@ -323,7 +471,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   checkoutSection: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginTop: 20,
@@ -334,7 +481,6 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   addressInput: {
-    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
@@ -358,10 +504,8 @@ const styles = StyleSheet.create({
   totalAmount: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#007AFF',
   },
   checkoutButton: {
-    backgroundColor: '#007AFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -396,6 +540,58 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  fulfilmentRow: {
+    marginBottom: 16,
+    gap: 10,
+  },
+  fulfilmentOption: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+    marginRight: 8,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  fulfilmentTextWrapper: {
+    flex: 1,
+  },
+  fulfilmentTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  fulfilmentSubtitle: {
+    fontSize: 13,
+  },
+  orderTotalRow: {
+    marginTop: 4,
+  },
+  orderTotalLabel: {
+    fontSize: 18,
+  },
+  orderTotalAmount: {
+    fontSize: 24,
   },
 });
 
