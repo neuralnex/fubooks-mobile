@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { Logo } from '@/components/Logo';
 
 export default function LoginScreen() {
   const [emailOrRegNumber, setEmailOrRegNumber] = useState('');
@@ -47,8 +48,14 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ThemedView style={styles.content}>
+          <View style={styles.logoRow}>
+            <Logo size={40} />
+            <ThemedText type="title" style={styles.brandText}>
+              FUBOOKS
+            </ThemedText>
+          </View>
           <ThemedText type="title" style={styles.title}>
-            Welcome to FUBOOKS
+            Welcome back
           </ThemedText>
           <ThemedText style={styles.subtitle}>Sign in to continue</ThemedText>
 
@@ -110,10 +117,21 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'center',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+  logoRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 8,
+  },
+  brandText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 4,
     textAlign: 'center',
   },
   subtitle: {
