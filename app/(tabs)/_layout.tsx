@@ -1,36 +1,17 @@
 import { Tabs } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { cartStorage } from '@/utils/storage';
+import { useCart } from '@/contexts/CartContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const [cartCount, setCartCount] = useState(0);
-
-  useEffect(() => {
-    const loadCartCount = async () => {
-      try {
-        const cart = await cartStorage.getCart();
-        const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-        setCartCount(count);
-      } catch {
-        setCartCount(0);
-      }
-    };
-
-    loadCartCount();
-
-    // Poll for cart changes
-    const interval = setInterval(loadCartCount, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const { cartCount } = useCart();
 
   return (
     <Tabs

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useCart } from '../contexts/CartContext';
 import { cartStorage } from '../utils/storage';
 import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
@@ -18,6 +19,7 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
   const router = useRouter();
   const { isAuthenticated, isAdmin } = useAuth();
   const { showToast } = useToast();
+  const { refreshCartCount } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
   const colorScheme = useColorScheme();
@@ -66,10 +68,7 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
       if (onCartUpdate) {
         onCartUpdate();
       }
-      // Force tab layout to refresh cart count
-      setTimeout(() => {
-        // This will trigger a re-render in the tab layout
-      }, 100);
+      refreshCartCount();
       showToast('Book added to cart successfully! 🎉', 'success');
       setQuantity(1);
     } catch {

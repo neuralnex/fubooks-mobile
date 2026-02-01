@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
+import { useCart } from '../../../contexts/CartContext';
 import { apiService } from '../../../services/api';
 import { cartStorage } from '../../../utils/storage';
 import { LoadingSpinner } from '../../../components/LoadingSpinner';
@@ -26,6 +27,7 @@ export default function BookDetailScreen() {
   const router = useRouter();
   const { isAuthenticated, isAdmin } = useAuth();
   const { showToast } = useToast();
+  const { refreshCartCount } = useCart();
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -83,10 +85,7 @@ export default function BookDetailScreen() {
       }
 
       await cartStorage.saveCart(cart);
-      // Force tab layout to refresh cart count
-      setTimeout(() => {
-        // This will trigger a re-render in the tab layout
-      }, 100);
+      refreshCartCount();
       showToast('Book added to cart successfully! 🎉', 'success');
     } catch {
       showToast('Failed to add to cart', 'error');

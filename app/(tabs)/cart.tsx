@@ -12,6 +12,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../contexts/CartContext';
 import { apiService } from '../../services/api';
 import { cartStorage } from '../../utils/storage';
 import type { CartItem } from '../../types';
@@ -26,6 +27,7 @@ type FulfilmentMethod = 'pickup' | 'delivery';
 
 export default function CartScreen() {
   const { isAuthenticated, isAdmin } = useAuth();
+  const { refreshCartCount } = useCart();
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -37,7 +39,8 @@ export default function CartScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadCart();
-    }, [])
+      refreshCartCount();
+    }, [refreshCartCount])
   );
 
   const loadCart = async () => {
@@ -55,14 +58,14 @@ export default function CartScreen() {
     );
     setCart(updatedCart);
     await cartStorage.saveCart(updatedCart);
-    // Tab layout will pick up the change via polling
+    refreshCartCount();
   };
 
   const removeItem = async (bookId: string) => {
     const updatedCart = cart.filter((item) => item.book.id !== bookId);
     setCart(updatedCart);
     await cartStorage.saveCart(updatedCart);
-    // Tab layout will pick up the change via polling
+    refreshCartCount();
   };
 
   const itemsTotal = cart.reduce(
@@ -114,6 +117,7 @@ export default function CartScreen() {
 
       await cartStorage.clearCart();
       setCart([]);
+      refreshCartCount();
       router.push(`/(tabs)/orders/${order.id}/payment`);
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to create order');
