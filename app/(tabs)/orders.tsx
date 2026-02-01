@@ -6,21 +6,30 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { apiService } from '../../services/api';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import type { Order } from '../../types';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function OrdersScreen() {
   const { isAuthenticated } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -74,6 +83,43 @@ export default function OrdersScreen() {
     }
   };
 
+  const canCancelOrder = (order: Order) => {
+    // Can cancel if payment is pending or failed, and order is not delivered
+    return (
+      (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') &&
+      order.orderStatus !== 'delivered'
+    );
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            setCancellingOrderId(orderId);
+            try {
+              await apiService.cancelOrder(orderId);
+              setOrders((prev) => prev.filter((order) => order.id !== orderId));
+              showToast('Order cancelled successfully', 'success');
+            } catch (error: any) {
+              showToast(
+                error.response?.data?.message || 'Failed to cancel order',
+                'error'
+              );
+            } finally {
+              setCancellingOrderId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -103,43 +149,61 @@ export default function OrdersScreen() {
       <FlatList
         data={orders}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.orderCard}
-            onPress={() => router.push(`/(tabs)/orders/${item.id}`)}
-          >
-            <View style={styles.orderHeader}>
-              <Text style={styles.orderId}>Order #{item.id.slice(0, 8)}</Text>
-              <Text style={styles.orderDate}>
-                {new Date(item.createdAt).toLocaleDateString()}
-              </Text>
-            </View>
-
-            <Text style={styles.orderAddress} numberOfLines={1}>
-              {item.deliveryAddress}
-            </Text>
-
-            <View style={styles.orderFooter}>
-              <View style={styles.statusContainer}>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(item.orderStatus) },
-                  ]}
-                >
-                  <Text style={styles.statusText}>{item.orderStatus}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getPaymentColor(item.paymentStatus) },
-                  ]}
-                >
-                  <Text style={styles.statusText}>{item.paymentStatus}</Text>
-                </View>
+          <View style={styles.orderCard}>
+            <TouchableOpacity
+              onPress={() => router.push(`/(tabs)/orders/${item.id}`)}
+            >
+              <View style={styles.orderHeader}>
+                <Text style={styles.orderId}>Order #{item.id.slice(0, 8)}</Text>
+                <Text style={styles.orderDate}>
+                  {new Date(item.createdAt).toLocaleDateString()}
+                </Text>
               </View>
-              <Text style={styles.orderTotal}>₦{Number(item.totalAmount).toFixed(2)}</Text>
-            </View>
-          </TouchableOpacity>
+
+              <Text style={styles.orderAddress} numberOfLines={1}>
+                {item.deliveryAddress}
+              </Text>
+
+              <View style={styles.orderFooter}>
+                <View style={styles.statusContainer}>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: getStatusColor(item.orderStatus) },
+                    ]}
+                  >
+                    <Text style={styles.statusText}>{item.orderStatus}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: getPaymentColor(item.paymentStatus) },
+                    ]}
+                  >
+                    <Text style={styles.statusText}>{item.paymentStatus}</Text>
+                  </View>
+                </View>
+                <Text style={styles.orderTotal}>₦{Number(item.totalAmount).toFixed(2)}</Text>
+              </View>
+            </TouchableOpacity>
+            {canCancelOrder(item) && (
+              <TouchableOpacity
+                style={[
+                  styles.cancelButton,
+                  { backgroundColor: colors.error },
+                  cancellingOrderId === item.id && styles.cancelButtonDisabled,
+                ]}
+                onPress={() => handleCancelOrder(item.id)}
+                disabled={cancellingOrderId === item.id}
+              >
+                {cancellingOrderId === item.id ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.cancelButtonText}>Cancel Order</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         )}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
@@ -252,6 +316,22 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonDisabled: {
+    opacity: 0.6,
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

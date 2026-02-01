@@ -125,6 +125,11 @@ class ApiService {
       throw new Error('Cannot open payment URL');
     }
   }
+
+  async cancelOrder(id: string): Promise<Order> {
+    const response = await this.api.delete<{ data: Order }>(`/orders/${id}`);
+    return response.data.data;
+  }
 }
 
 export const apiService = new ApiService();

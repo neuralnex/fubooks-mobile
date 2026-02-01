@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } fr
 import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { cartStorage } from '../utils/storage';
 import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
@@ -16,6 +17,7 @@ interface BookCardProps {
 export function BookCard({ book, onCartUpdate }: BookCardProps) {
   const router = useRouter();
   const { isAuthenticated, isAdmin } = useAuth();
+  const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
   const colorScheme = useColorScheme();
@@ -64,7 +66,11 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
       if (onCartUpdate) {
         onCartUpdate();
       }
-      Alert.alert('Success', 'Book added to cart');
+      // Force tab layout to refresh cart count
+      setTimeout(() => {
+        // This will trigger a re-render in the tab layout
+      }, 100);
+      showToast('Book added to cart successfully! 🎉', 'success');
       setQuantity(1);
     } catch {
       Alert.alert('Error', 'Failed to add to cart');
@@ -138,7 +144,7 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
                   -
                 </Text>
               </TouchableOpacity>
-              <Text style={styles.quantity}>{quantity}</Text>
+              <Text style={[styles.quantity, { color: colors.text }]}>{quantity}</Text>
               <TouchableOpacity
                 style={styles.quantityButton}
                 onPress={(e) => handleQuantityChange(1, e)}

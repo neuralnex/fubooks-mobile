@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
@@ -34,9 +34,11 @@ export default function CartScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  useEffect(() => {
-    loadCart();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCart();
+    }, [])
+  );
 
   const loadCart = async () => {
     const savedCart = await cartStorage.getCart();
@@ -53,12 +55,14 @@ export default function CartScreen() {
     );
     setCart(updatedCart);
     await cartStorage.saveCart(updatedCart);
+    // Tab layout will pick up the change via polling
   };
 
   const removeItem = async (bookId: string) => {
     const updatedCart = cart.filter((item) => item.book.id !== bookId);
     setCart(updatedCart);
     await cartStorage.saveCart(updatedCart);
+    // Tab layout will pick up the change via polling
   };
 
   const itemsTotal = cart.reduce(
@@ -197,7 +201,7 @@ export default function CartScreen() {
                 >
                   <Text style={styles.quantityButtonText}>-</Text>
                 </TouchableOpacity>
-                <Text style={styles.quantity}>{item.quantity}</Text>
+                <Text style={[styles.quantity, { color: colors.text }]}>{item.quantity}</Text>
                 <TouchableOpacity
                   style={styles.quantityButton}
                   onPress={() => updateQuantity(item.book.id, item.quantity + 1)}

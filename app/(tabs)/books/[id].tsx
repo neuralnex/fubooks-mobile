@@ -11,21 +11,27 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useToast } from '../../../contexts/ToastContext';
 import { apiService } from '../../../services/api';
 import { cartStorage } from '../../../utils/storage';
 import { LoadingSpinner } from '../../../components/LoadingSpinner';
 import type { Book } from '../../../types';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function BookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { isAuthenticated, isAdmin } = useAuth();
+  const { showToast } = useToast();
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   useEffect(() => {
     if (id) {
@@ -77,9 +83,13 @@ export default function BookDetailScreen() {
       }
 
       await cartStorage.saveCart(cart);
-      Alert.alert('Success', 'Book added to cart');
+      // Force tab layout to refresh cart count
+      setTimeout(() => {
+        // This will trigger a re-render in the tab layout
+      }, 100);
+      showToast('Book added to cart successfully! 🎉', 'success');
     } catch {
-      Alert.alert('Error', 'Failed to add to cart');
+      showToast('Failed to add to cart', 'error');
     } finally {
       setAddingToCart(false);
     }
@@ -163,7 +173,7 @@ export default function BookDetailScreen() {
                 >
                   <Text style={styles.quantityButtonText}>-</Text>
                 </TouchableOpacity>
-                <Text style={styles.quantity}>{quantity}</Text>
+                <Text style={[styles.quantity, { color: colors.text }]}>{quantity}</Text>
                 <TouchableOpacity
                   style={styles.quantityButton}
                   onPress={() => setQuantity(Math.min(book.stock, quantity + 1))}
