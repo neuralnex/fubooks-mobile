@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,59 +13,64 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
-import { apiService } from '../../services/api';
-import { cartStorage } from '../../utils/storage';
-import type { CartItem } from '../../types';
+import { useToast } from '../../contexts/ToastContext';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-const DELIVERY_FEE_EZIOBODO = 500;
-
-type FulfilmentMethod = 'pickup' | 'delivery';
-
 export default function CartScreen() {
   const { isAuthenticated, isAdmin } = useAuth();
-  const { refreshCartCount } = useCart();
+  const { cart, refreshCart, setItemQuantity, removeItem, clearCart } = useCart();
+  const { showToast } = useToast();
   const router = useRouter();
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [fulfilmentMethod, setFulfilmentMethod] = useState<FulfilmentMethod>('pickup');
-  const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   useFocusEffect(
     React.useCallback(() => {
-      loadCart();
-      refreshCartCount();
-    }, [refreshCartCount])
+      refreshCart();
+    }, [refreshCart])
   );
 
-  const loadCart = async () => {
-    const savedCart = await cartStorage.getCart();
-    setCart(savedCart);
-  };
-
   const updateQuantity = async (bookId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(bookId);
-      return;
+    try {
+      await setItemQuantity(bookId, newQuantity);
+      showToast('Cart updated', 'success', 900);
+    } catch {
+      showToast('Failed to update cart', 'error', 1200);
     }
-    const updatedCart = cart.map((item) =>
-      item.book.id === bookId ? { ...item, quantity: newQuantity } : item
-    );
-    setCart(updatedCart);
-    await cartStorage.saveCart(updatedCart);
-    refreshCartCount();
   };
 
-  const removeItem = async (bookId: string) => {
-    const updatedCart = cart.filter((item) => item.book.id !== bookId);
-    setCart(updatedCart);
-    await cartStorage.saveCart(updatedCart);
-    refreshCartCount();
+  const removeCartItem = async (bookId: string) => {
+    try {
+      await removeItem(bookId);
+      showToast('Cart updated', 'success', 900);
+    } catch {
+      showToast('Failed to update cart', 'error', 1200);
+    }
+  };
+
+  const confirmClearCart = async () => {
+    Alert.alert(
+      'Clear Cart',
+      'Are you sure you want to remove all items from your cart?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearCart();
+              showToast('Cart updated', 'success', 900);
+            } catch {
+              showToast('Failed to clear cart', 'error', 1200);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const itemsTotal = cart.reduce(
@@ -73,10 +78,7 @@ export default function CartScreen() {
     0
   );
 
-  const deliveryFee = fulfilmentMethod === 'delivery' ? DELIVERY_FEE_EZIOBODO : 0;
-  const grandTotal = itemsTotal + deliveryFee;
-
-  const handleCheckout = async () => {
+  const goToCheckout = () => {
     if (!isAuthenticated) {
       Alert.alert('Sign In Required', 'Please sign in to checkout', [
         { text: 'Cancel', style: 'cancel' },
@@ -90,40 +92,7 @@ export default function CartScreen() {
       return;
     }
 
-    if (
-      fulfilmentMethod === 'delivery' &&
-      (!deliveryAddress || deliveryAddress.length < 10)
-    ) {
-      Alert.alert(
-        'Error',
-        'Please enter a valid Eziobodo or Umuchima delivery address (at least 10 characters)'
-      );
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const order = await apiService.createOrder({
-        items: cart.map((item) => ({
-          bookId: item.book.id,
-          quantity: item.quantity,
-        })),
-        deliveryAddress:
-          fulfilmentMethod === 'pickup'
-            ? 'SUG Building - Pickup Station'
-            : deliveryAddress,
-        deliveryMethod: fulfilmentMethod,
-      });
-
-      await cartStorage.clearCart();
-      setCart([]);
-      refreshCartCount();
-      router.push(`/(tabs)/orders/${order.id}/payment`);
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to create order');
-    } finally {
-      setLoading(false);
-    }
+    router.push('/(tabs)/checkout' as any);
   };
 
   const getCoverSrc = (coverImage?: string) => {
@@ -169,9 +138,19 @@ export default function CartScreen() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ThemedText type="title" style={styles.title}>
-        Shopping Cart
-      </ThemedText>
+      <View style={styles.headerRow}>
+        <ThemedText type="title" style={styles.title}>
+          Shopping Cart
+        </ThemedText>
+        <TouchableOpacity
+          style={[styles.clearButton, { borderColor: colors.error }]}
+          onPress={confirmClearCart}
+        >
+          <Text style={[styles.clearButtonText, { color: colors.error }]}>
+            Clear Cart
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <FlatList
         data={cart}
@@ -221,7 +200,7 @@ export default function CartScreen() {
             </View>
             <TouchableOpacity
               style={styles.removeButton}
-              onPress={() => removeItem(item.book.id)}
+              onPress={() => removeCartItem(item.book.id)}
             >
               <Text style={[styles.removeButtonText, { color: colors.error }]}>
                 Remove
@@ -231,163 +210,25 @@ export default function CartScreen() {
         )}
         keyExtractor={(item) => item.book.id}
         contentContainerStyle={styles.list}
+        ListFooterComponent={
+          <View style={styles.summaryBar}>
+            <View>
+              <Text style={[styles.summaryLabel, { color: colors.icon }]}>
+                Items total
+              </Text>
+              <Text style={[styles.summaryAmount, { color: colors.text }]}>
+                ₦{itemsTotal.toFixed(2)}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.summaryCheckoutButton, { backgroundColor: colors.primary }]}
+              onPress={goToCheckout}
+            >
+              <Text style={styles.summaryCheckoutText}>Go to Checkout</Text>
+            </TouchableOpacity>
+          </View>
+        }
       />
-
-      <View
-        style={[
-          styles.checkoutSection,
-          { backgroundColor: colors.cardBackground, shadowColor: '#000' },
-        ]}
-      >
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Delivery Options
-        </Text>
-
-        <View style={styles.fulfilmentRow}>
-          <TouchableOpacity
-            style={[
-              styles.fulfilmentOption,
-              {
-                borderColor:
-                  fulfilmentMethod === 'pickup' ? colors.primary : colors.border,
-              },
-            ]}
-            onPress={() => setFulfilmentMethod('pickup')}
-          >
-            <View
-              style={[
-                styles.radioOuter,
-                {
-                  borderColor:
-                    fulfilmentMethod === 'pickup' ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              {fulfilmentMethod === 'pickup' && (
-                <View
-                  style={[styles.radioInner, { backgroundColor: colors.primary }]}
-                />
-              )}
-            </View>
-            <View style={styles.fulfilmentTextWrapper}>
-              <Text style={[styles.fulfilmentTitle, { color: colors.text }]}>
-                Pick up at SUG Building
-              </Text>
-              <Text style={[styles.fulfilmentSubtitle, { color: colors.icon }]}>
-                Free – collect your order at the SUG building pickup station
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.fulfilmentOption,
-              {
-                borderColor:
-                  fulfilmentMethod === 'delivery' ? colors.primary : colors.border,
-              },
-            ]}
-            onPress={() => setFulfilmentMethod('delivery')}
-          >
-            <View
-              style={[
-                styles.radioOuter,
-                {
-                  borderColor:
-                    fulfilmentMethod === 'delivery' ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              {fulfilmentMethod === 'delivery' && (
-                <View
-                  style={[styles.radioInner, { backgroundColor: colors.primary }]}
-                />
-              )}
-            </View>
-            <View style={styles.fulfilmentTextWrapper}>
-              <Text style={[styles.fulfilmentTitle, { color: colors.text }]}>
-                Deliver to Eziobodo / Umuchima
-              </Text>
-              <Text style={[styles.fulfilmentSubtitle, { color: colors.icon }]}>
-                ₦{DELIVERY_FEE_EZIOBODO.toFixed(0)} delivery fee – enter your full
-                Eziobodo or Umuchima address below
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {fulfilmentMethod === 'delivery' && (
-          <TextInput
-            style={[
-              styles.addressInput,
-              { backgroundColor: colors.inputBackground, color: colors.text },
-            ]}
-            placeholder="Eziobodo or Umuchima address (e.g. Lodge, room, landmarks)"
-            placeholderTextColor={colors.icon}
-            value={deliveryAddress}
-            onChangeText={setDeliveryAddress}
-            multiline
-          />
-        )}
-
-        <View style={styles.totalRow}>
-          <Text style={[styles.totalLabel, { color: colors.text }]}>
-            Items total
-          </Text>
-          <Text style={[styles.totalAmount, { color: colors.text }]}>
-            ₦{itemsTotal.toFixed(2)}
-          </Text>
-        </View>
-
-        <View style={styles.totalRow}>
-          <Text style={[styles.totalLabel, { color: colors.text }]}>Delivery</Text>
-          <Text style={[styles.totalAmount, { color: colors.text }]}>
-            {fulfilmentMethod === 'pickup'
-              ? 'Free (Pickup)'
-              : `₦${deliveryFee.toFixed(2)}`}
-          </Text>
-        </View>
-
-        <View style={[styles.totalRow, styles.orderTotalRow]}>
-          <Text style={[styles.totalLabel, styles.orderTotalLabel, { color: colors.text }]}>
-            Order total
-          </Text>
-          <Text
-            style={[
-              styles.totalAmount,
-              styles.orderTotalAmount,
-              { color: colors.primary },
-            ]}
-          >
-            ₦{grandTotal.toFixed(2)}
-          </Text>
-        </View>
-
-        {!isAuthenticated ? (
-          <TouchableOpacity
-            style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
-            onPress={() => router.push('/(auth)/login')}
-          >
-            <Text style={styles.checkoutButtonText}>Sign In to Checkout</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[
-              styles.checkoutButton,
-              { backgroundColor: colors.primary },
-              loading && styles.checkoutButtonDisabled,
-            ]}
-            onPress={handleCheckout}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
-            )}
-          </TouchableOpacity>
-        )}
-      </View>
     </ThemedView>
   );
 }
@@ -398,10 +239,56 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
+    flex: 1,
+  },
+  clearButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  clearButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  summaryBar: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#eee',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  summaryAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  summaryCheckoutButton: {
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  summaryCheckoutText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   list: {
     paddingBottom: 20,
@@ -479,9 +366,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   checkoutSection: {
+    marginTop: 16,
+    width: '100%',
     borderRadius: 12,
     padding: 16,
-    marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -495,6 +383,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  phoneInput: {
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    fontSize: 14,
+    minHeight: 48,
   },
   totalRow: {
     flexDirection: 'row',

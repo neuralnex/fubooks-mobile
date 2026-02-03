@@ -5,7 +5,6 @@ import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useCart } from '../contexts/CartContext';
-import { cartStorage } from '../utils/storage';
 import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
 import type { Book } from '../types';
@@ -19,8 +18,8 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
   const router = useRouter();
   const { isAuthenticated, isAdmin } = useAuth();
   const { showToast } = useToast();
-  const { refreshCartCount } = useCart();
-  const [quantity, setQuantity] = useState(1);
+  const { getItemQuantity, addToCart, setItemQuantity } = useCart();
+  const cartQty = getItemQuantity(book.id);
   const [addingToCart, setAddingToCart] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -48,29 +47,13 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
       return;
     }
 
-    if (book.stock < quantity) {
-      Alert.alert('Error', 'Insufficient stock');
-      return;
-    }
-
     setAddingToCart(true);
     try {
-      const cart = await cartStorage.getCart();
-      const existingItem = cart.find((item) => item.book.id === book.id);
-
-      if (existingItem) {
-        existingItem.quantity += quantity;
-      } else {
-        cart.push({ book, quantity });
-      }
-
-      await cartStorage.saveCart(cart);
+      await addToCart(book, 1);
       if (onCartUpdate) {
         onCartUpdate();
       }
-      refreshCartCount();
-      showToast('Book added to cart successfully! 🎉', 'success');
-      setQuantity(1);
+      showToast('Cart updated', 'success', 900);
     } catch {
       Alert.alert('Error', 'Failed to add to cart');
     } finally {
@@ -78,11 +61,35 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
     }
   };
 
-  const handleQuantityChange = (change: number, e: any) => {
+  const handleInCartChange = async (delta: number, e: any) => {
     e.stopPropagation();
-    const newQuantity = quantity + change;
-    if (newQuantity >= 1 && newQuantity <= book.stock) {
-      setQuantity(newQuantity);
+
+    if (!isAuthenticated) {
+      Alert.alert('Sign In Required', 'Please sign in to update your cart', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign In', onPress: () => router.push('/(auth)/login') },
+      ]);
+      return;
+    }
+
+    if (isAdmin) {
+      Alert.alert('Admin Account', 'Admin accounts cannot place orders');
+      return;
+    }
+
+    const nextQty = cartQty + delta;
+    if (nextQty > book.stock) {
+      return;
+    }
+
+    try {
+      await setItemQuantity(book.id, nextQty);
+      if (onCartUpdate) {
+        onCartUpdate();
+      }
+      showToast('Cart updated', 'success', 900);
+    } catch {
+      showToast('Failed to update cart', 'error', 1200);
     }
   };
 
@@ -133,42 +140,47 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
         
         {book.stock > 0 && !isAdmin && (
           <View style={styles.cartSection}>
-            <View style={styles.quantityControls}>
+            {cartQty <= 0 ? (
               <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={(e) => handleQuantityChange(-1, e)}
-                disabled={quantity <= 1}
+                style={[
+                  styles.addButton,
+                  { backgroundColor: colors.primary },
+                  addingToCart && styles.addButtonDisabled,
+                ]}
+                onPress={handleAddToCart}
+                disabled={addingToCart || book.stock <= 0}
               >
-                <Text style={[styles.quantityButtonText, quantity <= 1 && styles.quantityButtonDisabled]}>
-                  -
-                </Text>
+                {addingToCart ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.addButtonText}>Add to Cart</Text>
+                )}
               </TouchableOpacity>
-              <Text style={[styles.quantity, { color: colors.text }]}>{quantity}</Text>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={(e) => handleQuantityChange(1, e)}
-                disabled={quantity >= book.stock}
-              >
-                <Text style={[styles.quantityButtonText, quantity >= book.stock && styles.quantityButtonDisabled]}>
-                  +
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.addButton,
-                { backgroundColor: colors.primary },
-                addingToCart && styles.addButtonDisabled,
-              ]}
-              onPress={handleAddToCart}
-              disabled={addingToCart || quantity > book.stock}
-            >
-              {addingToCart ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.addButtonText}>Add to Cart</Text>
-              )}
-            </TouchableOpacity>
+            ) : (
+              <View style={styles.quantityControls}>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={(e) => handleInCartChange(-1, e)}
+                >
+                  <Text style={styles.quantityButtonText}>-</Text>
+                </TouchableOpacity>
+                <Text style={[styles.quantity, { color: colors.text }]}>{cartQty}</Text>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={(e) => handleInCartChange(1, e)}
+                  disabled={cartQty >= book.stock}
+                >
+                  <Text
+                    style={[
+                      styles.quantityButtonText,
+                      cartQty >= book.stock && styles.quantityButtonDisabled,
+                    ]}
+                  >
+                    +
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
 
@@ -205,8 +217,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     overflow: 'hidden',
-    flex: 1,
-    marginHorizontal: 6,
+    width: '31%',
+    marginHorizontal: '1%',
   },
   imageWrapper: {
     width: '100%',

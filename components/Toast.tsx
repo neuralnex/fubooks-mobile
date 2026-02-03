@@ -6,6 +6,7 @@ import {
   Animated,
   TouchableOpacity,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
@@ -16,6 +17,7 @@ export interface Toast {
   id: string;
   message: string;
   type: ToastType;
+  durationMs?: number;
 }
 
 interface ToastItemProps {
@@ -26,6 +28,7 @@ interface ToastItemProps {
 export function ToastItem({ toast, onClose }: ToastItemProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const useNativeDriver = Platform.OS !== 'web';
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -35,35 +38,35 @@ export function ToastItem({ toast, onClose }: ToastItemProps) {
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
       Animated.timing(opacityAnim, {
         toValue: 1,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
     ]).start();
 
-    // Auto dismiss after 3 seconds
+    // Auto dismiss (default: quick)
     const timer = setTimeout(() => {
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: -100,
           duration: 250,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(opacityAnim, {
           toValue: 0,
           duration: 250,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ]).start(() => {
         onClose(toast.id);
       });
-    }, 3000);
+    }, toast.durationMs ?? 1200);
 
     return () => clearTimeout(timer);
-  }, [toast.id, onClose, slideAnim, opacityAnim]);
+  }, [toast.id, onClose, slideAnim, opacityAnim, useNativeDriver]);
 
   const getBackgroundColor = () => {
     if (toast.type === 'success') return colors.success;
@@ -89,16 +92,17 @@ export function ToastItem({ toast, onClose }: ToastItemProps) {
         <Text style={styles.message}>{toast.message}</Text>
         <TouchableOpacity
           onPress={() => {
+            const useNativeDriver = Platform.OS !== 'web';
             Animated.parallel([
               Animated.timing(slideAnim, {
                 toValue: -100,
                 duration: 250,
-                useNativeDriver: true,
+                useNativeDriver,
               }),
               Animated.timing(opacityAnim, {
                 toValue: 0,
                 duration: 250,
-                useNativeDriver: true,
+                useNativeDriver,
               }),
             ]).start(() => {
               onClose(toast.id);
@@ -120,7 +124,7 @@ interface ToastContainerProps {
 
 export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View style={[styles.container, { pointerEvents: 'box-none' as any }]}>
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onClose={onClose} />
       ))}

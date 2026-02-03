@@ -118,6 +118,7 @@ export default function BooksScreen() {
         numColumns={3}
         contentContainerStyle={styles.list}
         columnWrapperStyle={styles.row}
+        scrollEnabled={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -182,7 +183,8 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   row: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 4,
   },
   empty: {
     padding: 40,

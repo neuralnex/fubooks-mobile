@@ -14,7 +14,6 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { useCart } from '../../../contexts/CartContext';
 import { apiService } from '../../../services/api';
-import { cartStorage } from '../../../utils/storage';
 import { LoadingSpinner } from '../../../components/LoadingSpinner';
 import type { Book } from '../../../types';
 import { ThemedView } from '@/components/themed-view';
@@ -27,10 +26,9 @@ export default function BookDetailScreen() {
   const router = useRouter();
   const { isAuthenticated, isAdmin } = useAuth();
   const { showToast } = useToast();
-  const { refreshCartCount } = useCart();
+  const { getItemQuantity, addToCart, setItemQuantity } = useCart();
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -68,29 +66,47 @@ export default function BookDetailScreen() {
       return;
     }
 
-    if (!book || book.stock < quantity) {
-      Alert.alert('Error', 'Insufficient stock');
+    if (!book || book.stock <= 0) {
+      Alert.alert('Error', 'Out of stock');
       return;
     }
 
     setAddingToCart(true);
     try {
-      const cart = await cartStorage.getCart();
-      const existingItem = cart.find((item) => item.book.id === book.id);
-
-      if (existingItem) {
-        existingItem.quantity += quantity;
-      } else {
-        cart.push({ book, quantity });
-      }
-
-      await cartStorage.saveCart(cart);
-      refreshCartCount();
-      showToast('Book added to cart successfully! 🎉', 'success');
+      await addToCart(book, 1);
+      showToast('Cart updated', 'success', 900);
     } catch {
       showToast('Failed to add to cart', 'error');
     } finally {
       setAddingToCart(false);
+    }
+  };
+
+  const handleInCartChange = async (delta: number) => {
+    if (!book) return;
+
+    if (!isAuthenticated) {
+      Alert.alert('Sign In Required', 'Please sign in to update your cart', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign In', onPress: () => router.push('/(auth)/login') },
+      ]);
+      return;
+    }
+
+    if (isAdmin) {
+      Alert.alert('Admin Account', 'Admin accounts cannot place orders');
+      return;
+    }
+
+    const currentQty = getItemQuantity(book.id);
+    const nextQty = currentQty + delta;
+    if (nextQty > book.stock) return;
+
+    try {
+      await setItemQuantity(book.id, nextQty);
+      showToast('Cart updated', 'success', 900);
+    } catch {
+      showToast('Failed to update cart', 'error', 1200);
     }
   };
 
@@ -112,6 +128,8 @@ export default function BookDetailScreen() {
       </ThemedView>
     );
   }
+
+  const cartQty = getItemQuantity(book.id);
 
   return (
     <ScrollView style={styles.container}>
@@ -165,33 +183,43 @@ export default function BookDetailScreen() {
 
           {book.stock > 0 && !isAdmin && (
             <View style={styles.cartSection}>
-              <View style={styles.quantityControls}>
+              {cartQty <= 0 ? (
                 <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                  style={[styles.addButton, addingToCart && styles.addButtonDisabled]}
+                  onPress={handleAddToCart}
+                  disabled={addingToCart}
                 >
-                  <Text style={styles.quantityButtonText}>-</Text>
+                  {addingToCart ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.addButtonText}>Add to Cart</Text>
+                  )}
                 </TouchableOpacity>
-                <Text style={[styles.quantity, { color: colors.text }]}>{quantity}</Text>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => setQuantity(Math.min(book.stock, quantity + 1))}
-                >
-                  <Text style={styles.quantityButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.addButton, addingToCart && styles.addButtonDisabled]}
-                onPress={handleAddToCart}
-                disabled={addingToCart || quantity > book.stock}
-              >
-                {addingToCart ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.addButtonText}>Add to Cart</Text>
-                )}
-              </TouchableOpacity>
+              ) : (
+                <View style={styles.quantityControls}>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => handleInCartChange(-1)}
+                  >
+                    <Text style={styles.quantityButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.quantity, { color: colors.text }]}>{cartQty}</Text>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => handleInCartChange(1)}
+                    disabled={cartQty >= book.stock}
+                  >
+                    <Text
+                      style={[
+                        styles.quantityButtonText,
+                        cartQty >= book.stock && styles.quantityButtonDisabled,
+                      ]}
+                    >
+                      +
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -284,6 +312,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#007AFF',
+  },
+  quantityButtonDisabled: {
+    color: '#ccc',
   },
   quantity: {
     fontSize: 20,

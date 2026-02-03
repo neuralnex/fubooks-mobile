@@ -104,13 +104,12 @@ export default function OrdersScreen() {
             setCancellingOrderId(orderId);
             try {
               await apiService.cancelOrder(orderId);
-              setOrders((prev) => prev.filter((order) => order.id !== orderId));
+              await loadOrders(); // Reload orders to get updated status
               showToast('Order cancelled successfully', 'success');
             } catch (error: any) {
-              showToast(
-                error.response?.data?.message || 'Failed to cancel order',
-                'error'
-              );
+              console.error('Cancel order error:', error);
+              const errorMessage = error?.response?.data?.message || error?.message || 'Failed to cancel order';
+              showToast(errorMessage, 'error');
             } finally {
               setCancellingOrderId(null);
             }
@@ -152,6 +151,7 @@ export default function OrdersScreen() {
           <View style={styles.orderCard}>
             <TouchableOpacity
               onPress={() => router.push(`/(tabs)/orders/${item.id}`)}
+              activeOpacity={0.7}
             >
               <View style={styles.orderHeader}>
                 <Text style={styles.orderId}>Order #{item.id.slice(0, 8)}</Text>
@@ -193,7 +193,10 @@ export default function OrdersScreen() {
                   { backgroundColor: colors.error },
                   cancellingOrderId === item.id && styles.cancelButtonDisabled,
                 ]}
-                onPress={() => handleCancelOrder(item.id)}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleCancelOrder(item.id);
+                }}
                 disabled={cancellingOrderId === item.id}
               >
                 {cancellingOrderId === item.id ? (

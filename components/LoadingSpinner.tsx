@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Text } from 'react-native';
+import { View, StyleSheet, Animated, Text, Platform } from 'react-native';
 import { Logo } from './Logo';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
@@ -7,6 +7,7 @@ import { Colors } from '@/constants/theme';
 export function LoadingSpinner() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const useNativeDriver = Platform.OS !== 'web';
 
   const scale = useRef(new Animated.Value(0.9)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -16,24 +17,24 @@ export function LoadingSpinner() {
       Animated.timing(opacity, {
         toValue: 1,
         duration: 400,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
       Animated.loop(
         Animated.sequence([
           Animated.timing(scale, {
             toValue: 1.05,
             duration: 700,
-            useNativeDriver: true,
+            useNativeDriver,
           }),
           Animated.timing(scale, {
             toValue: 0.95,
             duration: 700,
-            useNativeDriver: true,
+            useNativeDriver,
           }),
         ])
       ),
     ]).start();
-  }, [opacity, scale]);
+  }, [opacity, scale, useNativeDriver]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

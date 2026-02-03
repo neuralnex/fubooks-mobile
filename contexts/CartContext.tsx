@@ -1,36 +1,104 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useMemo } from 'react';
 import { cartStorage } from '../utils/storage';
-import type { CartItem } from '../types';
+import type { Book, CartItem } from '../types';
 
 interface CartContextType {
+  cart: CartItem[];
   cartCount: number;
-  refreshCartCount: () => Promise<void>;
+  refreshCart: () => Promise<void>;
+  getItemQuantity: (bookId: string) => number;
+  addToCart: (book: Book, quantity?: number) => Promise<void>;
+  setItemQuantity: (bookId: string, quantity: number) => Promise<void>;
+  removeItem: (bookId: string) => Promise<void>;
+  clearCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cartCount, setCartCount] = useState(0);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
-  const refreshCartCount = useCallback(async () => {
+  const refreshCart = useCallback(async () => {
     try {
-      const cart = await cartStorage.getCart();
-      const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-      setCartCount(count);
+      const savedCart = await cartStorage.getCart();
+      setCart(savedCart);
     } catch {
-      setCartCount(0);
+      setCart([]);
     }
   }, []);
 
   useEffect(() => {
-    refreshCartCount();
-    // Poll for changes
-    const interval = setInterval(refreshCartCount, 500);
-    return () => clearInterval(interval);
-  }, [refreshCartCount]);
+    refreshCart();
+  }, [refreshCart]);
+
+  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
+
+  const getItemQuantity = useCallback(
+    (bookId: string) => cart.find((item) => item.book.id === bookId)?.quantity ?? 0,
+    [cart]
+  );
+
+  const persistCart = useCallback(async (nextCart: CartItem[]) => {
+    setCart(nextCart);
+    await cartStorage.saveCart(nextCart);
+  }, []);
+
+  const addToCart = useCallback(
+    async (book: Book, quantity: number = 1) => {
+      const nextCart = [...cart];
+      const existing = nextCart.find((item) => item.book.id === book.id);
+
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        nextCart.push({ book, quantity });
+      }
+
+      await persistCart(nextCart);
+    },
+    [cart, persistCart]
+  );
+
+  const setItemQuantity = useCallback(
+    async (bookId: string, quantity: number) => {
+      if (quantity <= 0) {
+        await persistCart(cart.filter((item) => item.book.id !== bookId));
+        return;
+      }
+
+      const nextCart = cart.map((item) =>
+        item.book.id === bookId ? { ...item, quantity } : item
+      );
+      await persistCart(nextCart);
+    },
+    [cart, persistCart]
+  );
+
+  const removeItem = useCallback(
+    async (bookId: string) => {
+      await persistCart(cart.filter((item) => item.book.id !== bookId));
+    },
+    [cart, persistCart]
+  );
+
+  const clearCart = useCallback(async () => {
+    setCart([]);
+    await cartStorage.clearCart();
+  }, []);
 
   return (
-    <CartContext.Provider value={{ cartCount, refreshCartCount }}>
+    <CartContext.Provider
+      value={{
+        cart,
+        cartCount,
+        refreshCart,
+        getItemQuantity,
+        addToCart,
+        setItemQuantity,
+        removeItem,
+        clearCart,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

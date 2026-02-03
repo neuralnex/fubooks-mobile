@@ -22,6 +22,12 @@ const MAPPING = {
   'cart.fill': 'shopping-cart',
   'list.bullet': 'list',
   'person.fill': 'person',
+  'trash.fill': 'delete',
+  'pencil': 'edit',
+  'plus': 'add',
+  'minus': 'remove',
+  'eye': 'visibility',
+  'eye.slash': 'visibility-off',
 } as IconMapping;
 
 /**
