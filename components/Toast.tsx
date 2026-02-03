@@ -66,7 +66,7 @@ export function ToastItem({ toast, onClose }: ToastItemProps) {
     }, toast.durationMs ?? 1200);
 
     return () => clearTimeout(timer);
-  }, [toast.id, onClose, slideAnim, opacityAnim, useNativeDriver]);
+  }, [toast, onClose, slideAnim, opacityAnim, useNativeDriver]);
 
   const getBackgroundColor = () => {
     if (toast.type === 'success') return colors.success;

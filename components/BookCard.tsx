@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +13,12 @@ interface BookCardProps {
   book: Book;
   onCartUpdate?: () => void;
 }
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+// Match screen padding (~20 on each side) and card gap (~12 between cards)
+const HORIZONTAL_PADDING = 32;
+const CARD_GAP = 12;
+const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP * 2) / 3;
 
 export function BookCard({ book, onCartUpdate }: BookCardProps) {
   const router = useRouter();
@@ -209,7 +215,7 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 16,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -217,12 +223,13 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     overflow: 'hidden',
-    width: '31%',
-    marginHorizontal: '1%',
+    width: CARD_WIDTH,
+    marginHorizontal: CARD_GAP / 2,
   },
   imageWrapper: {
     width: '100%',
-    aspectRatio: 3 / 4,
+    // 2:3 book ratio (height = 1.5 * width)
+    aspectRatio: 2 / 3,
     backgroundColor: '#f5f5f5',
     justifyContent: 'center',
     alignItems: 'center',
