@@ -128,19 +128,6 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
         </Text>
         <Text style={[styles.price, { color: colors.primary }]}>₦{Number(book.price).toFixed(2)}</Text>
 
-        <View style={styles.deliveryBadges}>
-          <View style={[styles.deliveryBadge, { backgroundColor: colors.success + '22' }]}>
-            <Text style={[styles.deliveryBadgeText, { color: colors.success }]}>
-              SUG pickup
-            </Text>
-          </View>
-          <View style={[styles.deliveryBadge, { backgroundColor: colors.accent + '22' }]}>
-            <Text style={[styles.deliveryBadgeText, { color: colors.accent }]}>
-              Eziobodo / Umuchima delivery
-            </Text>
-          </View>
-        </View>
-        
         {book.stock > 0 && !isAdmin && (
           <View style={styles.cartSection}>
             {cartQty <= 0 ? (
@@ -260,21 +247,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
-  },
-  deliveryBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 8,
-  },
-  deliveryBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  deliveryBadgeText: {
-    fontSize: 11,
-    fontWeight: '500',
   },
   cartSection: {
     marginBottom: 8,
