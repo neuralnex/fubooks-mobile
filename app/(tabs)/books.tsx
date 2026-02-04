@@ -115,7 +115,7 @@ export default function BooksScreen() {
         data={filteredBooks}
         renderItem={({ item }) => <BookCard book={item} />}
         keyExtractor={(item) => item.id}
-        numColumns={3}
+        numColumns={2}
         contentContainerStyle={styles.list}
         columnWrapperStyle={styles.row}
         scrollEnabled={true}
@@ -179,12 +179,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   list: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingBottom: 20,
   },
   row: {
     justifyContent: 'flex-start',
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
   },
   empty: {
     padding: 40,

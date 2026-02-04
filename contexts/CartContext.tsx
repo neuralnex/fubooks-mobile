@@ -21,9 +21,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const refreshCart = useCallback(async () => {
     try {
       const savedCart = await cartStorage.getCart();
-      setCart(savedCart);
+      // Only update if we have data, to prevent flashing
+      if (savedCart && savedCart.length >= 0) {
+        setCart(savedCart);
+      }
     } catch {
-      setCart([]);
+      // Don't clear cart on error, keep existing state
     }
   }, []);
 

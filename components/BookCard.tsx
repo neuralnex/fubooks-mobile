@@ -15,10 +15,10 @@ interface BookCardProps {
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-// Match screen padding (~20 on each side) and card gap (~12 between cards)
-const HORIZONTAL_PADDING = 32;
-const CARD_GAP = 12;
-const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP * 2) / 3;
+// Larger cards with reduced padding and gap
+const HORIZONTAL_PADDING = 20;
+const CARD_GAP = 8;
+const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
 
 export function BookCard({ book, onCartUpdate }: BookCardProps) {
   const router = useRouter();
@@ -125,9 +125,6 @@ export function BookCard({ book, onCartUpdate }: BookCardProps) {
       <View style={styles.content}>
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
           {book.title}
-        </Text>
-        <Text style={[styles.author, { color: colors.icon }]} numberOfLines={1}>
-          by {book.author}
         </Text>
         <Text style={[styles.price, { color: colors.primary }]}>₦{Number(book.price).toFixed(2)}</Text>
 
@@ -250,24 +247,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   content: {
-    padding: 10,
+    padding: 12,
   },
   title: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 8,
     color: '#000',
-    minHeight: 36,
-  },
-  author: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 6,
+    minHeight: 40,
   },
   price: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   deliveryBadges: {
     flexDirection: 'row',
@@ -281,7 +273,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   deliveryBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
   },
   cartSection: {
@@ -295,15 +287,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   quantityButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   quantityButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#007AFF',
   },
@@ -311,14 +303,14 @@ const styles = StyleSheet.create({
     color: '#ccc',
   },
   quantity: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    minWidth: 24,
+    minWidth: 28,
     textAlign: 'center',
   },
   addButton: {
     borderRadius: 8,
-    padding: 10,
+    padding: 12,
     alignItems: 'center',
   },
   addButtonDisabled: {
@@ -326,7 +318,7 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
   stockBadgeContainer: {
@@ -344,7 +336,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8d7da',
   },
   stockText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
   },
   inStockText: {

@@ -25,9 +25,20 @@ export default function CartScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+
   useFocusEffect(
     React.useCallback(() => {
-      refreshCart();
+      let mounted = true;
+      setIsRefreshing(true);
+      refreshCart().finally(() => {
+        if (mounted) {
+          setIsRefreshing(false);
+        }
+      });
+      return () => {
+        mounted = false;
+      };
     }, [refreshCart])
   );
 
@@ -118,7 +129,7 @@ export default function CartScreen() {
     );
   }
 
-  if (cart.length === 0) {
+  if (!isRefreshing && cart.length === 0) {
     return (
       <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.empty}>
@@ -168,9 +179,6 @@ export default function CartScreen() {
             )}
             <View style={styles.itemDetails}>
               <Text style={[styles.itemTitle, { color: colors.text }]}>{item.book.title}</Text>
-              <Text style={[styles.itemAuthor, { color: colors.icon }]}>
-                by {item.book.author}
-              </Text>
               <Text style={[styles.itemPrice, { color: colors.accent }]}>
                 ₦{Number(item.book.price).toFixed(2)}
               </Text>
@@ -314,10 +322,6 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
-  },
-  itemAuthor: {
-    fontSize: 14,
     marginBottom: 4,
   },
   itemPrice: {

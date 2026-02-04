@@ -50,8 +50,8 @@ export function LoadingSpinner() {
         <Logo size={56} />
         <Text style={[styles.brandText, { color: colors.text }]}>FUBOOKS</Text>
       </Animated.View>
-      <Text style={[styles.subtitle, { color: colors.icon }]}>
-        Loading your bookstore...
+      <Text style={[styles.subtitle, { color: colors.icon }]} numberOfLines={1}>
+        Loading bookstore...
       </Text>
     </View>
   );
