@@ -91,6 +91,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="orders/[id]/payment-confirm"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="checkout"
         options={{
           href: null,

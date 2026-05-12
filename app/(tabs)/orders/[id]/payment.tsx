@@ -52,8 +52,7 @@ export default function PaymentScreen() {
         return;
       }
       
-      // Don't show alert, let the payment gateway handle redirect
-      // The returnUrl will redirect back to the app
+      // Monnify redirects to HOST/payments/mobile-return → opens fubooks://…/payment-confirm
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to initiate payment');
     } finally {

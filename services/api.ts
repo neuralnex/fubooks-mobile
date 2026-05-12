@@ -8,13 +8,18 @@ import type {
   Order,
   PaymentInitiateRequest,
   PaymentInitiateResponse,
-  PaymentStatusResponse,
+  PaymentGatewayStatus,
 } from '../types';
 
 class ApiService {
   private api: AxiosInstance;
 
   constructor() {
+    if (!API_CONFIG.baseURL) {
+      throw new Error(
+        'Set EXPO_PUBLIC_API_URL in mobile/.env (see mobile/.env.example).'
+      );
+    }
     this.api = axios.create({
       baseURL: API_CONFIG.baseURL,
       timeout: API_CONFIG.timeout,
@@ -110,9 +115,10 @@ class ApiService {
     return response.data.data;
   }
 
-  async getPaymentStatus(reference: string): Promise<PaymentStatusResponse> {
-    const response = await this.api.get<{ data: PaymentStatusResponse }>(
-      `/payments/status/${reference}`
+  async getPaymentStatus(reference: string): Promise<PaymentGatewayStatus> {
+    const encoded = encodeURIComponent(reference);
+    const response = await this.api.get<{ data: PaymentGatewayStatus }>(
+      `/payments/status/${encoded}`
     );
     return response.data.data;
   }

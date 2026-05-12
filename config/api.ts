@@ -1,5 +1,11 @@
+const base =
+  process.env.EXPO_PUBLIC_API_URL != null
+    ? String(process.env.EXPO_PUBLIC_API_URL).trim()
+    : '';
+
 export const API_CONFIG = {
-  baseURL: process.env.EXPO_PUBLIC_API_URL || 'https://bookmate-n9wh.onrender.com',
+  /** Set `EXPO_PUBLIC_API_URL` in `mobile/.env` (see `mobile/.env.example`). */
+  baseURL: base,
   timeout: 30000,
 };
 

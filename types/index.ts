@@ -53,7 +53,7 @@ export interface Order {
   deliveryAddress: string;
   deliveryMethod?: DeliveryMethod;
   paymentReference?: string;
-  opayOrderNo?: string;
+  monnifyTransactionReference?: string;
   orderItems: OrderItem[];
   createdAt: string;
 }
@@ -71,14 +71,17 @@ export interface PaymentInitiateRequest {
 }
 
 export interface PaymentInitiateResponse {
-  reference: string;
+  reference?: string;
+  paymentReference?: string;
+  monnifyTransactionReference?: string;
   paymentUrl?: string;
   cashierUrl?: string;
 }
 
-export interface PaymentStatusResponse {
-  reference: string;
-  status: PaymentStatus;
-  orderId: string;
+/** Matches `GET /payments/status/:reference` success payload. */
+export interface PaymentGatewayStatus {
+  status: string;
+  amount: number;
+  currency: string;
 }
 
