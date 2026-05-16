@@ -6,6 +6,7 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,6 +16,7 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import type { Book } from '../../types';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { getAxiosErrorMessage } from '../../utils/getAxiosErrorMessage';
 
 export default function HomeScreen() {
   const { isAuthenticated, isAdmin } = useAuth();
@@ -36,6 +38,7 @@ export default function HomeScreen() {
       setBooks(sorted.slice(0, 8));
     } catch (error) {
       console.error('Error loading books:', error);
+      Alert.alert('Could not load books', getAxiosErrorMessage(error));
     } finally {
       setLoading(false);
       setRefreshing(false);

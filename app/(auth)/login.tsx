@@ -17,6 +17,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Logo } from '@/components/Logo';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getAxiosErrorMessage } from '../../utils/getAxiosErrorMessage';
 
 export default function LoginScreen() {
   const [emailOrRegNumber, setEmailOrRegNumber] = useState('');
@@ -36,8 +37,8 @@ export default function LoginScreen() {
     try {
       await login(emailOrRegNumber.trim(), password);
       router.replace('/(tabs)');
-    } catch (error: any) {
-      Alert.alert('Login Failed', error.response?.data?.message || 'Invalid credentials');
+    } catch (error: unknown) {
+      Alert.alert('Login Failed', getAxiosErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -69,7 +70,7 @@ export default function LoginScreen() {
               value={emailOrRegNumber}
               onChangeText={setEmailOrRegNumber}
               autoCapitalize="none"
-              keyboardType="email-address"
+              keyboardType="default"
             />
 
             <View style={styles.passwordWrapper}>

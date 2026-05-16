@@ -17,6 +17,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Logo } from '@/components/Logo';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getAxiosErrorMessage } from '../../utils/getAxiosErrorMessage';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -50,8 +51,8 @@ export default function RegisterScreen() {
         accommodation: accommodation.trim(),
       });
       router.replace('/(tabs)');
-    } catch (error: any) {
-      Alert.alert('Registration Failed', error.response?.data?.message || 'Failed to register');
+    } catch (error: unknown) {
+      Alert.alert('Registration Failed', getAxiosErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -101,7 +102,9 @@ export default function RegisterScreen() {
               placeholderTextColor="#999"
               value={regNumber}
               onChangeText={setRegNumber}
-              autoCapitalize="characters"
+              autoCapitalize="none"
+              keyboardType="number-pad"
+              maxLength={11}
             />
 
             <TextInput

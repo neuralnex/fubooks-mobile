@@ -7,6 +7,7 @@ import {
   TextInput,
   RefreshControl,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { apiService } from '../../services/api';
 import { BookCard } from '../../components/BookCard';
@@ -14,6 +15,7 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import type { Book } from '../../types';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { getAxiosErrorMessage } from '../../utils/getAxiosErrorMessage';
 
 export default function BooksScreen() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -40,6 +42,7 @@ export default function BooksScreen() {
       setBooks(data);
     } catch (error) {
       console.error('Error loading books:', error);
+      Alert.alert('Could not load books', getAxiosErrorMessage(error));
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_CONFIG } from '../config/api';
 import { apiService } from '../services/api';
 import type { User, AuthResponse } from '../types';
 
@@ -28,6 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (__DEV__) {
+      console.log('[api] baseURL =', API_CONFIG.baseURL);
+    }
     loadStoredAuth();
   }, []);
 

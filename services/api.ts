@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import { API_CONFIG } from '../config/api';
@@ -11,21 +11,32 @@ import type {
   PaymentGatewayStatus,
 } from '../types';
 
+/** Backend `sendSuccess` shape: `{ success, message, data }`. */
+function unwrapApiData<T>(response: AxiosResponse<unknown>, context: string): T {
+  const body = response.data;
+  if (
+    body &&
+    typeof body === 'object' &&
+    'data' in body &&
+    (body as { data: unknown }).data !== undefined
+  ) {
+    return (body as { data: T }).data;
+  }
+  throw new Error(
+    `Unexpected response for ${context}. Update the app or contact support if this continues.`
+  );
+}
+
 class ApiService {
   private api: AxiosInstance;
 
   constructor() {
-    if (!API_CONFIG.baseURL) {
-      throw new Error(
-        'Configure the API URL: set EXPO_PUBLIC_API_URL in mobile/.env (no spaces around =) ' +
-          'or expo.extra.apiUrl in app.json, then rebuild the native app.'
-      );
-    }
     this.api = axios.create({
       baseURL: API_CONFIG.baseURL,
       timeout: API_CONFIG.timeout,
       headers: {
         'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
     });
 
@@ -59,26 +70,26 @@ class ApiService {
     password: string;
     accommodation: string;
   }): Promise<AuthResponse> {
-    const response = await this.api.post<{ data: AuthResponse }>('/auth/register', data);
-    return response.data.data;
+    const response = await this.api.post<unknown>('/auth/register', data);
+    return unwrapApiData<AuthResponse>(response, 'register');
   }
 
   async login(emailOrRegNumber: string, password: string): Promise<AuthResponse> {
-    const response = await this.api.post<{ data: AuthResponse }>('/auth/login', {
+    const response = await this.api.post<unknown>('/auth/login', {
       emailOrRegNumber,
       password,
     });
-    return response.data.data;
+    return unwrapApiData<AuthResponse>(response, 'login');
   }
 
   async getBooks(): Promise<Book[]> {
-    const response = await this.api.get<{ data: Book[] }>('/books');
-    return response.data.data;
+    const response = await this.api.get<unknown>('/books');
+    return unwrapApiData<Book[]>(response, 'books');
   }
 
   async getBookById(id: string): Promise<Book> {
-    const response = await this.api.get<{ data: Book }>(`/books/${id}`);
-    return response.data.data;
+    const response = await this.api.get<unknown>(`/books/${id}`);
+    return unwrapApiData<Book>(response, 'book');
   }
 
   async createOrder(data: {
@@ -86,42 +97,34 @@ class ApiService {
     deliveryAddress: string;
     deliveryMethod: 'pickup' | 'delivery';
   }): Promise<Order> {
-    const response = await this.api.post<{ data: Order }>('/orders', data);
-    return response.data.data;
+    const response = await this.api.post<unknown>('/orders', data);
+    return unwrapApiData<Order>(response, 'order');
   }
 
   async getOrders(): Promise<Order[]> {
-    const response = await this.api.get<{ data: Order[] }>('/orders');
-    return response.data.data;
+    const response = await this.api.get<unknown>('/orders');
+    return unwrapApiData<Order[]>(response, 'orders');
   }
 
   async getOrderById(id: string): Promise<Order> {
-    const response = await this.api.get<{ data: Order }>(`/orders/${id}`);
-    return response.data.data;
+    const response = await this.api.get<unknown>(`/orders/${id}`);
+    return unwrapApiData<Order>(response, 'order');
   }
 
   async initiatePayment(data: PaymentInitiateRequest): Promise<PaymentInitiateResponse> {
-    const response = await this.api.post<{ data: PaymentInitiateResponse }>(
-      '/payments/initiate',
-      data
-    );
-    return response.data.data;
+    const response = await this.api.post<unknown>('/payments/initiate', data);
+    return unwrapApiData<PaymentInitiateResponse>(response, 'payment');
   }
 
   async initiateCashierPayment(orderId: string): Promise<PaymentInitiateResponse> {
-    const response = await this.api.post<{ data: PaymentInitiateResponse }>(
-      '/payments/initiate-cashier',
-      { orderId }
-    );
-    return response.data.data;
+    const response = await this.api.post<unknown>('/payments/initiate-cashier', { orderId });
+    return unwrapApiData<PaymentInitiateResponse>(response, 'cashier payment');
   }
 
   async getPaymentStatus(reference: string): Promise<PaymentGatewayStatus> {
     const encoded = encodeURIComponent(reference);
-    const response = await this.api.get<{ data: PaymentGatewayStatus }>(
-      `/payments/status/${encoded}`
-    );
-    return response.data.data;
+    const response = await this.api.get<unknown>(`/payments/status/${encoded}`);
+    return unwrapApiData<PaymentGatewayStatus>(response, 'payment status');
   }
 
   async openPaymentUrl(url: string): Promise<void> {
@@ -134,10 +137,9 @@ class ApiService {
   }
 
   async cancelOrder(id: string): Promise<Order> {
-    const response = await this.api.delete<{ data: Order }>(`/orders/${id}`);
-    return response.data.data;
+    const response = await this.api.delete<unknown>(`/orders/${id}`);
+    return unwrapApiData<Order>(response, 'cancel order');
   }
 }
 
 export const apiService = new ApiService();
-
