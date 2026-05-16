@@ -49,7 +49,8 @@
       "router": {},
       "eas": {
         "projectId": "9e95121c-255b-436e-bc27-dc40e35e1171"
-      }
+      },
+      "apiUrl": "https://bookmate-n9wh.onrender.com"
     }
   }
 }

@@ -17,7 +17,8 @@ class ApiService {
   constructor() {
     if (!API_CONFIG.baseURL) {
       throw new Error(
-        'Set EXPO_PUBLIC_API_URL in mobile/.env (see mobile/.env.example).'
+        'Configure the API URL: set EXPO_PUBLIC_API_URL in mobile/.env (no spaces around =) ' +
+          'or expo.extra.apiUrl in app.json, then rebuild the native app.'
       );
     }
     this.api = axios.create({
