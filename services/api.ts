@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { API_CONFIG } from '../config/api';
 import type {
   AuthResponse,
@@ -127,13 +128,23 @@ class ApiService {
     return unwrapApiData<PaymentGatewayStatus>(response, 'payment status');
   }
 
-  async openPaymentUrl(url: string): Promise<void> {
+  async openPaymentUrl(url: string): Promise<string | undefined> {
     const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-    } else {
+    if (!canOpen) {
       throw new Error('Cannot open payment URL');
     }
+
+    const result = await WebBrowser.openAuthSessionAsync(url, Linking.createURL('/'));
+    if (result.type === 'success') {
+      return result.url;
+    }
+
+    if (result.type === 'cancel' || result.type === 'dismiss') {
+      return undefined;
+    }
+
+    await Linking.openURL(url);
+    return undefined;
   }
 
   async cancelOrder(id: string): Promise<Order> {

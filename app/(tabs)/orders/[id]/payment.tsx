@@ -43,16 +43,18 @@ export default function PaymentScreen() {
     try {
       const response = await apiService.initiateCashierPayment(id);
       
-      if (response.cashierUrl) {
-        await apiService.openPaymentUrl(response.cashierUrl);
-      } else if (response.paymentUrl) {
-        await apiService.openPaymentUrl(response.paymentUrl);
+      const paymentUrl = response.cashierUrl || response.paymentUrl;
+      if (paymentUrl) {
+        const returnUrl = await apiService.openPaymentUrl(paymentUrl);
+        if (returnUrl) {
+          router.replace(`/(tabs)/orders/${id}/payment-confirm`);
+        }
       } else {
         Alert.alert('Error', 'Payment URL not available');
         return;
       }
       
-      // Monnify redirects to HOST/payments/mobile-return → opens fubooks://…/payment-confirm
+      // Monnify redirects to HOST/payments/mobile-return/:orderId → opens fubooks:///orders/:id/payment-confirm
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to initiate payment');
     } finally {
