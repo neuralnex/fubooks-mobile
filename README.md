@@ -73,7 +73,7 @@ npm install
 
 2. Configure API URL (optional):
    - Create a `.env` file in the `mobile/` directory
-   - Add: `EXPO_PUBLIC_API_URL=https://bookmate-n9wh.onrender.com`
+   - Add: `EXPO_PUBLIC_API_URL=
    - Or update `config/api.ts` directly
 
 3. Start the development server:
@@ -141,7 +141,7 @@ npm start
 
 The app connects to the FUBOOKS backend API. Make sure the backend is running and accessible.
 
-Default API URL: `https://bookmate-n9wh.onrender.com`
+Default API URL: 
 
 To change the API URL:
 1. Update `config/api.ts` or

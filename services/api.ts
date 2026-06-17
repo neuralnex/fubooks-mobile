@@ -151,6 +151,53 @@ class ApiService {
     const response = await this.api.delete<unknown>(`/orders/${id}`);
     return unwrapApiData<Order>(response, 'cancel order');
   }
+
+  async getBooksPaginated(page: number = 1, limit: number = 20, filters: {
+    category?: string;
+    search?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    inStock?: boolean;
+    sortBy?: string;
+    sortOrder?: string;
+  } = {}): Promise<{
+    books: Book[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const response = await this.api.get<unknown>('/books', { params: { page, limit, ...filters } });
+    return unwrapApiData<{
+      books: Book[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(response, 'paginated books');
+  }
+
+  async getOrdersPaginated(page: number = 1, limit: number = 20, filters: {
+    status?: string;
+    paymentStatus?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  } = {}): Promise<{
+    orders: Order[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const response = await this.api.get<unknown>('/orders', { params: { page, limit, ...filters } });
+    return unwrapApiData<{
+      orders: Order[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(response, 'paginated orders');
+  }
 }
 
 export const apiService = new ApiService();

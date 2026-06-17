@@ -1,26 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   RefreshControl,
   Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { apiService } from '../../services/api';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import Pagination from '../../components/Pagination';
+import AnimatedView from '../../components/AnimatedView';
+import TouchableRipple from '../../components/TouchableRipple';
+import { SkeletonOrderCard } from '../../components/Skeleton';
 import type { Order } from '../../types';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export default function OrdersScreen() {
+export default function OrdersScreenSmooth() {
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
@@ -28,6 +32,14 @@ export default function OrdersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<FlatList>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
@@ -37,26 +49,52 @@ export default function OrdersScreen() {
     } else {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, currentPage]);
 
-  const loadOrders = async () => {
+  useEffect(() => {
+    // Scroll to top when page changes
+    if (currentPage === 1 && flatListRef.current) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 100);
+    }
+  }, [currentPage]);
+
+  const loadOrders = useCallback(async () => {
     try {
-      const data = await apiService.getOrders();
-      const sorted = [...data].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setOrders(sorted);
+      if (currentPage === 1) {
+        setLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+      
+      const data = await apiService.getOrdersPaginated(currentPage, 10, {
+        sortBy: 'createdAt',
+        sortOrder: 'DESC',
+      });
+      
+      setOrders(currentPage === 1 ? data.orders : [...orders, ...data.orders]);
+      setTotalPages(data.totalPages);
+      setTotalOrders(data.total);
     } catch (error) {
       console.error('Error loading orders:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setIsLoadingMore(false);
     }
-  };
+  }, [currentPage, orders]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadOrders();
+    setCurrentPage(1);
+  };
+
+  const handleLoadMore = () => {
+    if (!loading && !isLoadingMore && currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -84,14 +122,13 @@ export default function OrdersScreen() {
   };
 
   const canCancelOrder = (order: Order) => {
-    // Can cancel if payment is pending or failed, and order is not delivered
     return (
       (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') &&
       order.orderStatus !== 'delivered'
     );
   };
 
-  const handleCancelOrder = async (orderId: string) => {
+  const handleCancelOrder = useCallback(async (orderId: string) => {
     Alert.alert(
       'Cancel Order',
       'Are you sure you want to cancel this order?',
@@ -104,7 +141,7 @@ export default function OrdersScreen() {
             setCancellingOrderId(orderId);
             try {
               await apiService.cancelOrder(orderId);
-              await loadOrders(); // Reload orders to get updated status
+              await loadOrders();
               showToast('Order cancelled successfully', 'success');
             } catch (error: any) {
               console.error('Cancel order error:', error);
@@ -117,114 +154,247 @@ export default function OrdersScreen() {
         },
       ]
     );
-  };
+  }, [loadOrders, showToast]);
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  const toggleExpandOrder = useCallback((orderId: string) => {
+    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+  }, [expandedOrderId]);
+
+  const renderOrderItem = useCallback(({ item, index }: { item: Order; index: number }) => {
+    const isExpanded = expandedOrderId === item.id;
+    
+    return (
+      <AnimatedView
+        animationType="slideUp"
+        duration={400}
+        delay={index * 30}
+        style={styles.orderItem}
+      >
+        <TouchableRipple
+          onPress={() => toggleExpandOrder(item.id)}
+          style={[
+            styles.orderCard,
+            isExpanded && styles.orderCardExpanded
+          ]}
+        >
+          <View>
+            <View style={styles.orderHeader}>
+              <View style={styles.orderInfo}>
+                <ThemedText style={styles.orderId}>Order #{item.id.slice(0, 8)}</ThemedText>
+                <Text style={styles.orderDate}>
+                  {new Date(item.createdAt).toLocaleDateString()}
+                </Text>
+              </View>
+              <View style={styles.orderAmount}>
+                <Text style={styles.orderTotal}>₦{Number(item.totalAmount).toFixed(2)}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.orderAddress} numberOfLines={1}>
+              {item.deliveryAddress}
+            </Text>
+
+            <View style={styles.orderFooter}>
+              <View style={styles.statusContainer}>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusColor(item.orderStatus) },
+                  ]}
+                >
+                  <Text style={styles.statusText}>{item.orderStatus}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getPaymentColor(item.paymentStatus) },
+                  ]}
+                >
+                  <Text style={styles.statusText}>{item.paymentStatus}</Text>
+                </View>
+              </View>
+              <Text style={styles.itemsCount}>{item.orderItems.length} items</Text>
+            </View>
+
+            {/* Expanded Order Details */}
+            {isExpanded && (
+              <AnimatedView animationType="slideDown" duration={300}>
+                <View style={styles.expandedContent}>
+                  <View style={styles.divider} />
+                  <View style={styles.itemsList}>
+                    {item.orderItems.map((orderItem) => (
+                      <View key={orderItem.id} style={styles.itemRow}>
+                        <View style={styles.itemInfo}>
+                          <Text style={styles.itemTitle} numberOfLines={1}>
+                            {orderItem.book.title}
+                          </Text>
+                          <Text style={styles.itemAuthor}>
+                            by {orderItem.book.author}
+                          </Text>
+                        </View>
+                        <Text style={styles.itemPrice}>
+                          ₦{(orderItem.price * orderItem.quantity).toFixed(2)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  
+                  {item.paymentStatus === 'pending' && (
+                    <TouchableRipple
+                      onPress={() => router.push(`/(tabs)/orders/${item.id}/payment`)}
+                      style={styles.completePaymentButton}
+                    >
+                      <Text style={styles.completePaymentText}>Complete Payment</Text>
+                    </TouchableRipple>
+                  )}
+                  
+                  {canCancelOrder(item) && (
+                    <TouchableRipple
+                      onPress={() => {
+                        handleCancelOrder(item.id);
+                      }}
+                      style={[styles.cancelButton, { backgroundColor: colors.error }]}
+                      disabled={cancellingOrderId === item.id}
+                    >
+                      {cancellingOrderId === item.id ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <Text style={styles.cancelButtonText}>Cancel Order</Text>
+                      )}
+                    </TouchableRipple>
+                  )}
+                </View>
+              </AnimatedView>
+            )}
+          </View>
+        </TouchableRipple>
+      </AnimatedView>
+    );
+  }, [expandedOrderId, cancellingOrderId, colors, handleCancelOrder, router, toggleExpandOrder]);
+
+  const renderSkeleton = useCallback(() => (
+    <SkeletonOrderCard />
+  ), []);
 
   if (!isAuthenticated) {
     return (
       <ThemedView style={styles.container}>
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>Please sign in to view your orders</Text>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => router.push('/(auth)/login')}
-          >
-            <Text style={styles.buttonText}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
+        <AnimatedView animationType="fadeIn" duration={500}>
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>Please sign in to view your orders</Text>
+            <TouchableRipple
+              style={styles.button}
+              onPress={() => router.push('/(auth)/login')}
+            >
+              <Text style={styles.buttonText}>Sign In</Text>
+            </TouchableRipple>
+          </View>
+        </AnimatedView>
       </ThemedView>
     );
   }
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>
-        My Orders
-      </ThemedText>
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            shadowOpacity: scrollY.interpolate({
+              inputRange: [0, 50],
+              outputRange: [0, 0.1],
+              extrapolate: 'clamp',
+            }),
+          },
+        ]}
+      >
+        <AnimatedView animationType="slideDown" duration={600}>
+          <ThemedText type="title" style={styles.title}>
+            My Orders
+          </ThemedText>
+        </AnimatedView>
+        <AnimatedView animationType="fadeIn" duration={600} delay={100}>
+          <Text style={styles.subtitle}>Track your purchases and delivery status</Text>
+        </AnimatedView>
+      </Animated.View>
 
-      <FlatList
-        data={orders}
-        renderItem={({ item }) => (
-          <View style={styles.orderCard}>
-            <TouchableOpacity
-              onPress={() => router.push(`/(tabs)/orders/${item.id}`)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.orderHeader}>
-                <Text style={styles.orderId}>Order #{item.id.slice(0, 8)}</Text>
-                <Text style={styles.orderDate}>
-                  {new Date(item.createdAt).toLocaleDateString()}
-                </Text>
+      {loading && currentPage === 1 ? (
+        <View style={styles.loadingContainer}>
+          <FlatList
+            data={Array.from({ length: 5 })}
+            renderItem={renderSkeleton}
+            keyExtractor={(_, i) => `skeleton-${i}`}
+            contentContainerStyle={styles.list}
+            scrollEnabled={false}
+          />
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={orders}
+          renderItem={renderOrderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          scrollEnabled={true}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              tintColor="#007AFF"
+              colors={['#007AFF']}
+            />
+          }
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            <AnimatedView animationType="fadeIn" duration={500}>
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>No orders yet</Text>
+                <TouchableRipple
+                  style={styles.button}
+                  onPress={() => router.push('/(tabs)/books')}
+                >
+                  <Text style={styles.buttonText}>Browse Books</Text>
+                </TouchableRipple>
               </View>
-
-              <Text style={styles.orderAddress} numberOfLines={1}>
-                {item.deliveryAddress}
-              </Text>
-
-              <View style={styles.orderFooter}>
-                <View style={styles.statusContainer}>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(item.orderStatus) },
-                    ]}
-                  >
-                    <Text style={styles.statusText}>{item.orderStatus}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: getPaymentColor(item.paymentStatus) },
-                    ]}
-                  >
-                    <Text style={styles.statusText}>{item.paymentStatus}</Text>
-                  </View>
+            </AnimatedView>
+          }
+          ListFooterComponent={
+            isLoadingMore ? (
+              <AnimatedView animationType="fadeIn" duration={300}>
+                <View style={styles.loader}>
+                  <LoadingSpinner />
                 </View>
-                <Text style={styles.orderTotal}>₦{Number(item.totalAmount).toFixed(2)}</Text>
-              </View>
-            </TouchableOpacity>
-            {canCancelOrder(item) && (
-              <TouchableOpacity
-                style={[
-                  styles.cancelButton,
-                  { backgroundColor: colors.error },
-                  cancellingOrderId === item.id && styles.cancelButtonDisabled,
-                ]}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handleCancelOrder(item.id);
-                }}
-                disabled={cancellingOrderId === item.id}
-              >
-                {cancellingOrderId === item.id ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.cancelButtonText}>Cancel Order</Text>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No orders yet</Text>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => router.push('/(tabs)/books')}
-            >
-              <Text style={styles.buttonText}>Browse Books</Text>
-            </TouchableOpacity>
-          </View>
-        }
-      />
+              </AnimatedView>
+            ) : orders.length > 0 ? (
+              <AnimatedView animationType="fadeIn" duration={400}>
+                <View style={styles.footer}>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(page) => {
+                      setCurrentPage(page);
+                      if (page !== currentPage) {
+                        setTimeout(() => {
+                          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                        }, 100);
+                      }
+                    }}
+                  />
+                  <Text style={styles.footerText}>
+                    Showing {orders.length} of {totalOrders} orders
+                  </Text>
+                </View>
+              </AnimatedView>
+            ) : null
+          }
+        />
+      )}
     </ThemedView>
   );
 }
@@ -232,45 +402,83 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
     padding: 20,
     paddingTop: 60,
+    backgroundColor: '#fff',
+    zIndex: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 8,
+    color: '#1a1a1a',
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#6c757d',
+    marginBottom: 4,
   },
   list: {
     paddingBottom: 20,
   },
+  orderItem: {
+    marginBottom: 12,
+    paddingHorizontal: 20,
+  },
   orderCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 3,
+  },
+  orderCardExpanded: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 8,
+  },
+  orderInfo: {
+    flex: 1,
   },
   orderId: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#495057',
   },
   orderDate: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#6c757d',
+    marginTop: 2,
+  },
+  orderAmount: {
+    alignItems: 'flex-end',
+  },
+  orderTotal: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
   },
   orderAddress: {
     fontSize: 14,
-    color: '#666',
+    color: '#6c757d',
     marginBottom: 12,
   },
   orderFooter: {
@@ -293,10 +501,79 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'capitalize',
   },
-  orderTotal: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  itemsCount: {
+    fontSize: 13,
+    color: '#6c757d',
+  },
+  expandedContent: {
+    backgroundColor: '#f8f9fa',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    padding: 16,
+    marginTop: 0,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e9ecef',
+    marginBottom: 12,
+  },
+  itemsList: {
+    marginBottom: 12,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#495057',
+  },
+  itemAuthor: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginTop: 2,
+  },
+  itemPrice: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#007AFF',
+  },
+  completePaymentButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  completePaymentText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonDisabled: {
+    opacity: 0.6,
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   empty: {
     flex: 1,
@@ -314,28 +591,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
-  cancelButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+  footer: {
+    padding: 20,
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+    marginTop: 12,
   },
-  cancelButtonDisabled: {
-    opacity: 0.6,
-  },
-  cancelButtonText: {
-    color: '#fff',
+  footerText: {
     fontSize: 14,
-    fontWeight: '600',
+    color: '#6c757d',
+    marginTop: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  loader: {
+    padding: 20,
+    alignItems: 'center',
   },
 });
-
