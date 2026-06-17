@@ -18,6 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Logo } from '@/components/Logo';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { getAxiosErrorMessage } from '../../utils/getAxiosErrorMessage';
+import AnimatedView from '../../components/AnimatedView';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -64,8 +65,10 @@ export default function RegisterScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <ThemedView style={styles.content}>
-          <View style={styles.logoRow}>
+        <AnimatedView animationType="fadeIn" duration={500}>
+          <ThemedView style={styles.content}>
+            <AnimatedView animationType="slideUp" duration={600} delay={100}>
+              <View style={styles.logoRow}>
             <Logo size={40} />
             <ThemedText type="title" style={styles.brandText}>
               FUBOOKS
@@ -157,7 +160,9 @@ export default function RegisterScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </ThemedView>
+            </AnimatedView>
+          </ThemedView>
+        </AnimatedView>
       </ScrollView>
     </KeyboardAvoidingView>
   );

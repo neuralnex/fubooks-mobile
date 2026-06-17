@@ -114,12 +114,14 @@ export default function PaymentConfirmScreen() {
           setAttempt(i + 1);
           let gatewayStatus = '';
           try {
+            // This now also syncs the payment status to the database
             const st = await apiService.getPaymentStatus(ref);
             gatewayStatus = String(st.status ?? '');
           } catch {
             gatewayStatus = '';
           }
 
+          // After syncing via getPaymentStatus, refresh the order
           orderSnapshot = await apiService.getOrderById(orderId);
           const orderPaid = orderSnapshot.paymentStatus === 'paid';
 

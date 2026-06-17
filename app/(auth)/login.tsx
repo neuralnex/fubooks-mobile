@@ -18,6 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Logo } from '@/components/Logo';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { getAxiosErrorMessage } from '../../utils/getAxiosErrorMessage';
+import AnimatedView from '../../components/AnimatedView';
 
 export default function LoginScreen() {
   const [emailOrRegNumber, setEmailOrRegNumber] = useState('');
@@ -50,19 +51,24 @@ export default function LoginScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <ThemedView style={styles.content}>
-          <View style={styles.logoRow}>
+        <AnimatedView animationType="fadeIn" duration={500}>
+          <ThemedView style={styles.content}>
+            <AnimatedView animationType="slideUp" duration={600} delay={100}>
+              <View style={styles.logoRow}>
             <Logo size={40} />
             <ThemedText type="title" style={styles.brandText}>
               FUBOOKS
             </ThemedText>
           </View>
-          <ThemedText type="title" style={styles.title}>
-            Welcome back
-          </ThemedText>
-          <ThemedText style={styles.subtitle}>Sign in to continue</ThemedText>
+          <AnimatedView animationType="slideUp" duration={600} delay={200}>
+            <ThemedText type="title" style={styles.title}>
+              Welcome back
+            </ThemedText>
+            <ThemedText style={styles.subtitle}>Sign in to continue</ThemedText>
+          </AnimatedView>
 
-          <View style={styles.form}>
+          <AnimatedView animationType="slideUp" duration={600} delay={300}>
+            <View style={styles.form}>
             <TextInput
               style={styles.input}
               placeholder="Email or Registration Number"
@@ -113,8 +119,11 @@ export default function LoginScreen() {
                 <Text style={styles.linkText}>Sign Up</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </ThemedView>
+            </View>
+          </AnimatedView>
+            </AnimatedView>
+          </ThemedView>
+        </AnimatedView>
       </ScrollView>
     </KeyboardAvoidingView>
   );
