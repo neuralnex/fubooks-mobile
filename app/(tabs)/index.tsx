@@ -32,6 +32,10 @@ export default function HomeScreen() {
   const loadBooks = async () => {
     try {
       const data = await apiService.getBooks();
+      // Ensure data is an array before sorting
+      if (!Array.isArray(data)) {
+        throw new Error('Expected books array but received: ' + typeof data);
+      }
       const sorted = [...data].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );

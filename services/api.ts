@@ -84,7 +84,7 @@ class ApiService {
   }
 
   async getBooks(): Promise<Book[]> {
-    const response = await this.api.get<unknown>('/books');
+    const response = await this.api.get<unknown>('/books/all-simple');
     return unwrapApiData<Book[]>(response, 'books');
   }
 
